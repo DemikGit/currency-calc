@@ -1,8 +1,19 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import './index.css';
-import App from './App';
-import registerServiceWorker from './registerServiceWorker';
+import React, { Fragment } from 'react'
+import { render } from 'react-dom'
+import { Provider } from 'react-redux'
+import { ConnectedRouter } from 'connected-react-router'
+import { history, store } from './store-index';
+import { App } from './components/App/App';
 
-ReactDOM.render(<App />, document.getElementById('root'));
-registerServiceWorker();
+const target = document.querySelector('#root')
+
+render(
+  <Provider store={store}>
+    <ConnectedRouter history={history}>
+      <Fragment>
+        <App />
+      </Fragment>
+    </ConnectedRouter>
+  </Provider>,
+  target
+)
