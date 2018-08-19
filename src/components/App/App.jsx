@@ -1,7 +1,9 @@
 import React, { Fragment } from 'react';
-import { Route, Link } from 'react-router-dom'
+import { Route, Switch } from 'react-router-dom'
 import { Calculator } from '../Pages/Calculator/Calculator';
 import { Results } from '../Pages/Results/Results';
+import { withRouter } from 'react-router';
+import { push } from 'react-router-redux';
 
 export const App = () => {
   return (

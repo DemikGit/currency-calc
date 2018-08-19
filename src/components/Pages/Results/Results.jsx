@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { Component, Fragment } from 'react';
+import { connect } from 'react-redux';
 
 export const Results = () => (
   <div>
