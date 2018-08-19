@@ -3,7 +3,7 @@ Currency Converter
 ---
 This is a simple application for converting crypto currencies
 
-You can find demo here: demikgit.github.io
+You can find demo here: [Currency Converter](demikgit.github.io "Demo").
 
 ---
 
