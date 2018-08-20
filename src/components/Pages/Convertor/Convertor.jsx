@@ -19,6 +19,8 @@ import {
 import {
   currencyRates,
   setConversionResult,
+  setConversionDirection,
+  setInitialLoadingState,
 } from './ConvertorActions';
 
 import {
@@ -31,6 +33,7 @@ import {
   getLoadingState,
   getRate,
   getResult,
+  getDirection,
 } from './ConvertorSelectors';
 
 import Divider from '@material-ui/core/Divider';
@@ -39,11 +42,33 @@ class ConvertorComponent extends Component {
 
   formOnChange = () => {
     const {
+      activeInput,
+      setDirection,
+      resetLoadingState,
+    } = this.props;
+
+    if (['firstCurrency', 'secondCurrency'].includes(activeInput)) {
+      setDirection(activeInput)
+    }
+
+    resetLoadingState();
+  }
+
+  formSubmit = () => {
+    const { result, addResult } = this.props;
+    addResult(result());
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    const {
       rateLoadingState,
       currencyById,
-      activeInput,
-      getCurrencyRates,
       formValues,
+      rate,
+      changeFormFieldValue,
+      setResult,
+      direction,
+      getCurrencyRates,
     } = this.props;
 
     const firstCurrencyId = get(
@@ -58,91 +83,51 @@ class ConvertorComponent extends Component {
       null
     );
 
-    const isFirstCurrencyChanged = ['firstCurrencyType', 'firstCurrency'].includes(activeInput);
-
-    const convertedValueExist = isFirstCurrencyChanged ?
-      get(formValues, ['firstCurrency'], false)
-      :
-      get(formValues, ['secondCurrency'], false)
-    ;
-
+    const isFirstCurrencyChanged = 'firstCurrency' === direction;
     const isAboveCurrenciesTypeExists = firstCurrencyId && secondCurrencyId;
-
-    if (isAboveCurrenciesTypeExists && convertedValueExist) {
-      if ( isFirstCurrencyChanged && !rateLoadingState.isLoading) {
-        getCurrencyRates(
-          currencyById(firstCurrencyId),
-          currencyById(secondCurrencyId)
-        );
-        this.props.dispatch(
-          push(
-            `/?from=${
-              currencyById(firstCurrencyId).name
-            }&to=${
-              currencyById(secondCurrencyId).name
-            }`
-          )
-        )
-      } else {
-        getCurrencyRates(
-          currencyById(secondCurrencyId),
-          currencyById(firstCurrencyId)
-        );
-        this.props.dispatch(
-          push(
-            `/?from=${
-              currencyById(secondCurrencyId).name
-            }&to=${
-              currencyById(firstCurrencyId).name
-            }`
-          )
-        )
-      }
-    }
-  }
-
-  formSubmit = () => {
-    const { result, addResult } = this.props;
-    addResult(result());
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    const {
-      rateLoadingState,
-      currencyById,
-      activeInput,
-      formValues,
-      rate,
-      changeFormFieldValue,
-      setResult,
-    } = this.props;
 
     const { rateLoadingState: prevRateLoadingState } = prevProps;
 
+    if (!rateLoadingState.isLoading && !rateLoadingState.success) {
+      if (isAboveCurrenciesTypeExists) {
+        if ( isFirstCurrencyChanged && !rateLoadingState.isLoading) {
+          getCurrencyRates(
+            currencyById(firstCurrencyId),
+            currencyById(secondCurrencyId)
+          );
+          this.props.dispatch(
+            push(
+              `/?from=${
+                currencyById(firstCurrencyId).name
+              }&to=${
+                currencyById(secondCurrencyId).name
+              }`
+            )
+          )
+        } else {
+          getCurrencyRates(
+            currencyById(secondCurrencyId),
+            currencyById(firstCurrencyId)
+          );
+          this.props.dispatch(
+            push(
+              `/?from=${
+                currencyById(secondCurrencyId).name
+              }&to=${
+                currencyById(firstCurrencyId).name
+              }`
+            )
+          )
+        }
+      }
+    }
+
     if (prevRateLoadingState.isLoading && !rateLoadingState.isLoading && rateLoadingState.success) {
 
-      const firstCurrencyId = get(
-        formValues,
-        [ 'firstCurrencyType'],
-        null
-      );
-
-      const secondCurrencyId = get(
-        formValues,
-        [ 'secondCurrencyType'],
-        null
-      );
-
-      const isAboveCurrenciesTypeExists = firstCurrencyId && secondCurrencyId;
-      const isFirstCurrencyChanged = ['firstCurrencyType', 'firstCurrency'].includes(activeInput);
       const secondCurrency = currencyById(secondCurrencyId);
       const firstCurrency = currencyById(firstCurrencyId);
 
-      let convertedValueExist = isFirstCurrencyChanged ?
-        Boolean(formValues['firstCurrency'])
-        :
-        Boolean(formValues['secondCurrency'])
-      ;
+      const convertedValueExist = get(formValues, [direction], false);
 
       const result = {
         from: {
@@ -161,26 +146,34 @@ class ConvertorComponent extends Component {
 
       if ( isAboveCurrenciesTypeExists && convertedValueExist) {
         if ( isFirstCurrencyChanged ) {
-          currencyRate = String(rate().quotes[secondCurrency.symbol].price);
-          currencyValue = String(get(formValues, ['firstCurrency'], null));
-          changedField = 'secondCurrency';
-          result.from.symbol = firstCurrency.symbol;
-          result.from.value = currencyValue;
-          result.to.symbol = secondCurrency.symbol;
+          currencyRate = get(rate(), ['quotes', secondCurrency.symbol, 'price'], false);
+          if (currencyRate) {
+            currencyRate = String(currencyRate);
+            currencyValue = String(get(formValues, ['firstCurrency'], null));
+            changedField = 'secondCurrency';
+            result.from.symbol = firstCurrency.symbol;
+            result.from.value = currencyValue;
+            result.to.symbol = secondCurrency.symbol;
+          }
         } else {
-          currencyRate = String(rate().quotes[firstCurrency.symbol].price);
-          currencyValue = String(get(formValues, ['secondCurrency'], null));
-          changedField = 'firstCurrency';
-          result.from.symbol = secondCurrency.symbol;
-          result.from.value = currencyValue;
-          result.to.symbol = firstCurrency.symbol;
+          currencyRate = get(rate(), ['quotes', firstCurrency.symbol, 'price'], false);
+          if (currencyRate) {
+            currencyRate = String(currencyRate);
+            currencyValue = String(get(formValues, ['secondCurrency'], null));
+            changedField = 'firstCurrency';
+            result.from.symbol = secondCurrency.symbol;
+            result.from.value = currencyValue;
+            result.to.symbol = firstCurrency.symbol;
+          }
         }
 
-        const currencyRateNumber = new BigNumber(currencyRate);
-        const currencyValueNumber = new BigNumber(currencyValue);
-        result.to.value = String(currencyValueNumber.multipliedBy(currencyRateNumber));
-        changeFormFieldValue('convertor', changedField, result.to.value);
-        setResult(result);
+        if (currencyRate) {
+          const currencyRateNumber = new BigNumber(currencyRate);
+          const currencyValueNumber = new BigNumber(currencyValue);
+          result.to.value = String(currencyValueNumber.multipliedBy(currencyRateNumber));
+          changeFormFieldValue('convertor', changedField, result.to.value);
+          setResult(result);
+        }
       }
     }
   }
@@ -190,9 +183,9 @@ class ConvertorComponent extends Component {
       result,
       rateLoadingState,
       currenciesLoadingState,
-      activeInput,
+      direction,
     } = this.props;
-    const isFirstCurrencyChanged = ['firstCurrencyType', 'firstCurrency'].includes(activeInput);
+    const isFirstCurrencyChanged = 'firstCurrency' === direction;
     return (
       <Fragment>
         <ConvertorForm
@@ -215,6 +208,8 @@ const mapDispatchToProps = (dispatch) => ({
   changeFormFieldValue: (form, field, value) => dispatch(change(form, field,value)),
   addResult: (result) => dispatch(submitResult(result)),
   setResult: (result) => dispatch(setConversionResult(result)),
+  setDirection: (direction) => dispatch(setConversionDirection(direction)),
+  resetLoadingState: () => dispatch(setInitialLoadingState()),
   dispatch
 });
 
@@ -227,6 +222,7 @@ const mapStateToProps = (state) => ({
   currenciesLoadingState: getCurrenciesLoadingState(state),
   rate: () => getRate(state),
   result: () => getResult(state),
+  direction: getDirection(state),
 });
 
 export const Convertor = connect(
